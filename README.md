@@ -1,3 +1,5 @@
+> **Archived.** The infrastructure now lives with each project: [baja-valle-service/infra](https://github.com/raulvaldes-cetys/baja-valle-service/tree/master/infra) (shared base, database and API) and `baja-valle-web/infra` (dashboard). This repository is kept read-only for reference and will be deleted when the project ends.
+
 # Baja Valle Infra
 
 Terraform for the Baja Valle Azure infrastructure: API, database, secrets, container registry, monitoring and budget.
@@ -35,7 +37,7 @@ The remote state uses Entra ID authentication (`use_azuread_auth`). The storage 
 
 ## Secrets
 
-Application secrets live in Key Vault and are never managed by Terraform, so they don't end up in the state. The API reads them with its managed identity (`id-bajavalle-api`, role *Key Vault Secrets User*). Whoever applies `envs/prod` gets *Key Vault Secrets Officer* to load them:
+Application secrets live in Key Vault. The two database URLs are the only ones Terraform writes: it generates the database passwords (`random_password`), so they are already in the remote state, which is private and RBAC-only. Every other secret is loaded by hand and never touches the state. The API reads them with its managed identity (`id-bajavalle-api`, role *Key Vault Secrets User*). Whoever applies `envs/prod` gets *Key Vault Secrets Officer* to load them:
 
 ```bash
 KV=$(terraform -chdir=envs/prod output -raw key_vault_name)
@@ -44,8 +46,8 @@ az keyvault secret set --vault-name "$KV" --name <secret-name> --file <file-with
 
 | Secret | API variable | Value |
 |---|---|---|
-| `database-url` | `DATABASE_URL` | Runtime role `baja_valle_app` |
-| `migrator-database-url` | `DIRECT_URL` | Database admin, only for migrations |
+| `database-url` | `DATABASE_URL` | Runtime role `baja_valle_app` (written by Terraform) |
+| `migrator-database-url` | `DIRECT_URL` | Database admin, only for migrations (written by Terraform) |
 | `encryption-keys` | `ENCRYPTION_KEYS` | `pnpm crypto:keys` in baja-valle-service |
 | `blind-index-key` | `BLIND_INDEX_KEY` | `pnpm crypto:keys` |
 | `jwt-access-secret` | `JWT_ACCESS_SECRET` | `pnpm crypto:keys` |
@@ -57,3 +59,4 @@ Use `--file` (or `--value` from a variable) so values never appear in the shell 
 
 - Budget of `monthly_budget_usd` (default $5) on the resource group with email alerts at 50%, 80% and 100%.
 - Log Analytics daily cap of 0.05 GB and 30-day retention.
+
